@@ -54,7 +54,7 @@ class UserService {
       PasswordUtils.isPasswordBreached(password)
         .then(async ({ breach, count }) => {
           await User.findByIdAndUpdate(unverifiedUser._id, {
-            passwordBreached: breach && count > 99,
+            isPasswordBreached: breach && count > 99,
           });
         })
         .catch((err) => {

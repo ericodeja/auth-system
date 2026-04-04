@@ -14,7 +14,7 @@ const userSchema = new Schema({
   },
   agreedToTerms: { type: Boolean, required: true },
   isVerified: { type: Boolean, default: false },
-  passwordBreached: {
+  isPasswordBreached: {
     type: Boolean,
     default: false,
   },
