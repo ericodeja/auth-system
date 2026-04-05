@@ -5,9 +5,9 @@ import type {
   LoginPayload,
   CreateUserResponse,
   EmailVerificationResponse,
+  LoginResponse,
 } from "../types";
 import HttpError from "../utils/http-error.utils";
-import authServices from "../services/auth.services";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -68,7 +68,19 @@ const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
 const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password }: LoginPayload = req.body;
-    const response = await AuthService.loginUser(email, password);
+    const response: LoginResponse = await AuthService.loginUser(
+      email,
+      password,
+      req.ip,
+      req.headers["user-agent"]
+    );
+    res.status(200).json({
+      success: true,
+      message: "User successfully authenticated",
+      data: {
+        response,
+      },
+    });
   } catch (err) {
     next(err);
   }

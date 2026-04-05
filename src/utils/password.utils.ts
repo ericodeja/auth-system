@@ -58,7 +58,9 @@ class PasswordUtils {
     return await bcrypt.hash(plainTextPassword, SALT_ROUNDS);
   }
 
-
+  async comparePassword(plainTextPassword: string, hashedPassword: string) {
+    return await bcrypt.compare(plainTextPassword, hashedPassword);
+  }
 }
 
 export default new PasswordUtils();

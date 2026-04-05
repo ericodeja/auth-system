@@ -12,4 +12,8 @@ export type Config = {
   passwordRateLimitMax: number;
   authRateLimitMax: number;
   generalRateLimitMax: number;
+  maxFailedAttempts: number;
+  lockDurationMs: number;
+  accessToken: string;
+  refreshToken: string;
 };

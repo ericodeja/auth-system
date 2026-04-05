@@ -18,6 +18,18 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  isLocked: {
+    type: Boolean,
+    default: false,
+  },
+  lockUntil: {
+    type: Date,
+    default: null,
+  },
 });
 
 const User = model("User", UserSchema);

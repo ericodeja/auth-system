@@ -34,3 +34,15 @@ export type EmailVerificationResponse = {
     isVerified: Boolean;
   };
 };
+
+export type LoginResponse = {
+  user: {
+    _id: Types.ObjectId | string;
+    email: string;
+    role: string;
+  };
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
+};

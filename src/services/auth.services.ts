@@ -4,8 +4,14 @@ import Token from "../models/token.model";
 import TokenUtils from "../utils/token.utils";
 import type { JwtPayload } from "jsonwebtoken";
 import { sendEmailVerificationMail } from "../utils/email.utils";
-import type { CreateUserResponse, EmailVerificationResponse } from "../types";
+import type {
+  CreateUserResponse,
+  EmailVerificationResponse,
+  LoginResponse,
+} from "../types";
 import HttpError from "../utils/http-error.utils";
+import AccountLockUtils from "../utils/accountLock.utils";
+import logger from "../utils/logger.utils";
 
 class AuthService {
   async createUser(
@@ -48,7 +54,7 @@ class AuthService {
 
       // Send email in the background so it doesn't block the response (fire-and-forget)
       sendEmailVerificationMail(email, emailVerificationToken).catch((err) => {
-        console.error("Background email dispatch failed:", err);
+        logger.error("Background email dispatch failed:", err);
       });
 
       //Background tasks saves result and frontend polls once after signup
@@ -59,7 +65,7 @@ class AuthService {
           });
         })
         .catch((err) => {
-          console.error(`Breach check failed: ${err}`);
+          logger.error(`Breach check failed: ${err}`);
         });
 
       return {
@@ -73,12 +79,79 @@ class AuthService {
         createEmailResponse: "Email dispatched",
       };
     } catch (err) {
+      if (err instanceof HttpError) throw err;
       throw new HttpError(500, String(err));
     }
   }
 
-  async loginUser(email: string, password: string) {
-    
+  async loginUser(
+    email: string,
+    password: string,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<LoginResponse> {
+    try {
+      const user = await User.findOne({ email }).select(
+        "email role password isLocked lockUntil failedLoginAttempts ",
+      );
+
+      if (!user) throw new HttpError(401, "Invalid email or password.");
+
+      const { isLocked, lockUntil } = await AccountLockUtils.isAccountLocked(
+        user._id.toString(),
+      );
+
+      if (isLocked)
+        throw new HttpError(
+          423,
+          `Account is locked due to too many failed attempts. Try again at ${lockUntil?.toLocaleTimeString()}.`,
+        );
+
+      const isMatch = await PasswordUtils.comparePassword(
+        password,
+        user.password,
+      );
+
+      if (!isMatch) {
+        await AccountLockUtils.handleFailedLogin(user._id.toString());
+        throw new HttpError(401, "Invalid email or password");
+      }
+
+      await AccountLockUtils.resetFailedLogins(user._id.toString());
+
+      /* 
+       Add MFA
+      */
+
+      const accessToken: string = TokenUtils.generateAccessToken(user._id);
+      const refreshToken: string = await TokenUtils.generateRefreshToken(
+        user._id,
+      );
+
+      logger.info({
+        event: "LOGIN_SUCCESS",
+        userId: user._id,
+        email: user.email,
+        ip,
+        userAgent,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        user: {
+          _id: user._id,
+          email: user.email,
+          role: user.role,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      };
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, String(err));
+    }
   }
 
   async verifyEmail(

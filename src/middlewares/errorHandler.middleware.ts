@@ -1,20 +1,26 @@
 import type { Request, Response, NextFunction } from "express";
-
-type AppError = {
-  status?: number;
-  message?: string;
-};
+import HttpError from "../utils/http-error.utils";
+import logger from "../utils/logger.utils";
 
 const errorHandler = (
-  err: AppError,
+  err: unknown,
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  console.error(err);
-  res.status(err.status || 500).json({
+  logger.error(err);
+
+  if (err instanceof HttpError) {
+    res.status(err.status).json({
+      success: false,
+      message: err.message,
+    });
+    return;
+  }
+
+  res.status(500).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message: "Internal Server Error",
   });
 };
 
