@@ -10,6 +10,11 @@ export type SignupPayload = {
   agreedToTerms: boolean;
 };
 
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
 export type CreateUserResponse = {
   unverifiedUser: {
     _id: Types.ObjectId | string;

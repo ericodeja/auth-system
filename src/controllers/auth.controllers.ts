@@ -2,10 +2,12 @@ import type { Response, Request, NextFunction } from "express";
 import AuthService from "../services/auth.services";
 import type {
   SignupPayload,
+  LoginPayload,
   CreateUserResponse,
   EmailVerificationResponse,
 } from "../types";
 import HttpError from "../utils/http-error.utils";
+import authServices from "../services/auth.services";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -63,4 +65,13 @@ const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export default { register, verifyEmail };
+const login = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password }: LoginPayload = req.body;
+    const response = await AuthService.loginUser(email, password);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export default { register, verifyEmail, login };

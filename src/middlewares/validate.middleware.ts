@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import type { ObjectSchema } from "joi";
+import HttpError from "../utils/http-error.utils";
 
 const validate = (schema: ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -9,10 +10,7 @@ const validate = (schema: ObjectSchema) => {
     });
     if (error) {
       const errors = error.details.map((d) => d.message);
-      return res.status(400).json({
-        success: false,
-        errors,
-      });
+      return next(new HttpError(400, errors.join(", ")));
     }
 
     req.body = value; // replace the req.body with the clean/validated version

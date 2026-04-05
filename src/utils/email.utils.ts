@@ -1,14 +1,9 @@
 import { Resend } from "resend";
 import config from "../config/config";
+import HttpError from "./http-error.utils";
 
 const RESEND_API_KEY = config.resendApiKey;
-if (!RESEND_API_KEY) {
-  throw new Error("Missing RESEND_API_KEY");
-}
 const RESEND_DOMAIN = config.resendDomain;
-if (!RESEND_DOMAIN) {
-  throw new Error("Missing RESEND_DOMAIN");
-}
 const resend = new Resend(RESEND_API_KEY);
 
 export const sendEmailVerificationMail = async (
@@ -23,7 +18,7 @@ export const sendEmailVerificationMail = async (
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new HttpError(502, error.message);
   }
   return data
 };

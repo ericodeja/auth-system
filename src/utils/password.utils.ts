@@ -2,6 +2,7 @@ import crypto from "crypto";
 import axios from "axios";
 import bcrypt from "bcrypt";
 import config from "../config/config";
+import HttpError from "./http-error.utils";
 
 export type PasswordBreachResult = {
   breach: boolean;
@@ -49,7 +50,7 @@ class PasswordUtils {
       }
       return { breach: false, count: 0 };
     } catch (err) {
-      throw new Error(String(err));
+      throw new HttpError(502, `Password breach check failed: ${String(err)}`);
     }
   }
 

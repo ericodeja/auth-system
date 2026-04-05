@@ -3,10 +3,6 @@ import config from "../config/config";
 
 const uri = config.mongoUri;
 
-if (!uri) {
-  throw new Error("MongoDB connection URI is missing!");
-}
-
 export const connectDB = async () => {
   try {
     await mongoose.connect(uri);

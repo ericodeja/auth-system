@@ -77,6 +77,10 @@ class AuthService {
     }
   }
 
+  async loginUser(email: string, password: string) {
+    
+  }
+
   async verifyEmail(
     emailVerificationToken: string,
   ): Promise<EmailVerificationResponse> {

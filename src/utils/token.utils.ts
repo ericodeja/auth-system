@@ -5,9 +5,6 @@ import type { JwtPayload } from "jsonwebtoken";
 import Token from "../models/token.model";
 
 const EMAIL_VERIFICATION_SECRET = config.emailVerificationSecret;
-if (!EMAIL_VERIFICATION_SECRET) {
-  throw new Error("Missing EMAIL_VERIFICATION_SECRET");
-}
 
 const EMAIL_VERIFICATION_EXPIRY = config.emailVerificationExpiry;
 
