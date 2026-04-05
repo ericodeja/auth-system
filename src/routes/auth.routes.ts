@@ -7,4 +7,9 @@ const router = express.Router();
 
 router.post("/", validate(userSchema), authControllers.register);
 
+router.post(
+  "/verify-email/:emailVerificationToken",
+  authControllers.verifyEmail,
+);
+
 export default router;

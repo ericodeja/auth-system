@@ -19,7 +19,7 @@ export const sendEmailVerificationMail = async (
     from: RESEND_DOMAIN,
     to: [email],
     subject: "Verify your email",
-    html: emailVerificationToken,
+    html: `http://localhost:${config.port}/auth/verify-email/${emailVerificationToken}`,
   });
 
   if (error) {

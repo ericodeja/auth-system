@@ -1,6 +1,11 @@
 import type { Response, Request, NextFunction } from "express";
-import UserService from "../services/user.services";
-import type { SignupPayload, CreateUserResponse } from "../types";
+import AuthService from "../services/auth.services";
+import type {
+  SignupPayload,
+  CreateUserResponse,
+  EmailVerificationResponse,
+} from "../types";
+import HttpError from "../utils/http-error.utils";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -15,7 +20,7 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     }: SignupPayload = req.body;
 
     const { unverifiedUser, createEmailResponse }: CreateUserResponse =
-      await UserService.createUser(
+      await AuthService.createUser(
         firstName,
         lastName,
         email,
@@ -37,6 +42,25 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const login = (req: Request, res: Response, next: NextFunction) => {};
+const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { emailVerificationToken } = req.params;
+    if (!emailVerificationToken || typeof emailVerificationToken !== "string") {
+      return next(new HttpError(400, "Missing verification token"));
+    }
+    const response: EmailVerificationResponse = await AuthService.verifyEmail(
+      emailVerificationToken,
+    );
+    res.status(201).json({
+      success: true,
+      message: "Email successfully verified",
+      data: {
+        response,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-export default { register, login };
+export default { register, verifyEmail };

@@ -10,7 +10,6 @@ export type SignupPayload = {
   agreedToTerms: boolean;
 };
 
-
 export type CreateUserResponse = {
   unverifiedUser: {
     _id: Types.ObjectId | string;
@@ -20,4 +19,13 @@ export type CreateUserResponse = {
     role: string;
   };
   createEmailResponse: string;
+};
+
+export type EmailVerificationResponse = {
+  verifiedUser: {
+    _id: Types.ObjectId | string;
+    email: string;
+    role: string;
+    isVerified: Boolean;
+  };
 };
