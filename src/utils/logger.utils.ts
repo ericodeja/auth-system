@@ -11,6 +11,15 @@ const logFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
   return `[${timestamp}] ${level}: ${stack || msg || metaString}`;
 });
 
+const exactLevelFilter = (targetLevel: string) => {
+  return winston.format((info) => {
+    if (info.level === targetLevel) {
+      return info;
+    }
+    return false;
+  })();
+};
+
 const logger = winston.createLogger({
   level: config.nodeEnv === "production" ? "warn" : "debug",
   format: combine(
@@ -23,23 +32,38 @@ const logger = winston.createLogger({
       format: combine(colorize(), logFormat),
     }),
 
-    new winston.transports.File({
-      filename: "logs/app.log",
-    }),
-
+    
     new winston.transports.File({
       filename: "logs/info.log",
       level: "info",
+      format: combine(
+        exactLevelFilter("info"),
+        timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        errors({ stack: true }),
+        logFormat,
+      ),
     }),
 
     new winston.transports.File({
       filename: "logs/error.log",
       level: "error",
+      format: combine(
+        exactLevelFilter("error"),
+        timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        errors({ stack: true }),
+        logFormat,
+      ),
     }),
 
     new winston.transports.File({
       filename: "logs/warn.log",
       level: "warn",
+      format: combine(
+        exactLevelFilter("warn"),
+        timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        errors({ stack: true }),
+        logFormat,
+      ),
     }),
   ],
 });

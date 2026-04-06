@@ -9,6 +9,7 @@ const TokenSchema = new Schema({
   exp: { type: Number, required: true },
 });
 
+TokenSchema.index({ userId: 1, purpose: 1 });
 
 const Token = model('Token', TokenSchema)
 export default Token

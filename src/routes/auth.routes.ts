@@ -17,6 +17,12 @@ router.post(
 );
 
 router.post(
+  "/resend-email-verification-token/:id",
+  authLimiter,
+  authControllers.sendEmailVerificationToken,
+);
+
+router.post(
   "/verify-email/:emailVerificationToken",
   authLimiter,
   authControllers.verifyEmail,

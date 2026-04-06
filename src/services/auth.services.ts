@@ -91,9 +91,9 @@ class AuthService {
     userAgent?: string,
   ): Promise<LoginResponse> {
     try {
-      const user = await User.findOne({ email }).select(
-        "email role password isLocked lockUntil failedLoginAttempts ",
-      );
+      const user = await User.findOne({ email })
+        .select("email role password isLocked lockUntil failedLoginAttempts ")
+        .lean();
 
       if (!user) throw new HttpError(401, "Invalid email or password.");
 
@@ -154,6 +154,25 @@ class AuthService {
     }
   }
 
+  async sendEmailVerificationToken(id: string) {
+    try {
+      const user = await User.findById(id).select("email").lean();
+      if (!user) {
+        throw new HttpError(404, "User does not exist ");
+      }
+
+      const emailVerificationToken: string =
+        await TokenUtils.generateEmailVerificationToken(id, user.email);
+
+      sendEmailVerificationMail(user.email, emailVerificationToken).catch((err) => {
+        logger.error("Background email dispatch failed:", err);
+      });
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, String(err));
+    }
+  }
+
   async verifyEmail(
     emailVerificationToken: string,
   ): Promise<EmailVerificationResponse> {
@@ -171,7 +190,7 @@ class AuthService {
       const existingToken = await Token.findOne({
         userId: payload.userId,
         purpose: "email-verification",
-      });
+      }).lean();
 
       if (!existingToken || !existingToken.isValid) {
         throw new HttpError(
@@ -183,7 +202,11 @@ class AuthService {
         User.findByIdAndUpdate(
           payload.userId,
           { isVerified: true },
-          { returnDocument: "after", select: "_id email role isVerified" },
+          {
+            returnDocument: "after",
+            select: "_id email role isVerified",
+            lean: true,
+          },
         ),
         Token.updateMany(
           { userId: payload.userId, purpose: "email-verification" },

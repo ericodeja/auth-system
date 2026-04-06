@@ -8,6 +8,8 @@ import type {
   LoginResponse,
 } from "../types";
 import HttpError from "../utils/http-error.utils";
+import { send } from "node:process";
+import { verify } from "node:crypto";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -44,6 +46,48 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const login = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password }: LoginPayload = req.body;
+    const response: LoginResponse = await AuthService.loginUser(
+      email,
+      password,
+      req.ip,
+      req.headers["user-agent"],
+    );
+    res.status(200).json({
+      success: true,
+      message: "User successfully authenticated",
+      data: {
+        response,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const sendEmailVerificationToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    if (!id || typeof id !== "string") {
+      return next(new HttpError(400, "Missing User ID"));
+    }
+
+    await AuthService.sendEmailVerificationToken(id);
+    res.status(200).json({
+      success: true,
+      message: "Email Verification sent successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { emailVerificationToken } = req.params;
@@ -65,25 +109,4 @@ const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const login = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email, password }: LoginPayload = req.body;
-    const response: LoginResponse = await AuthService.loginUser(
-      email,
-      password,
-      req.ip,
-      req.headers["user-agent"]
-    );
-    res.status(200).json({
-      success: true,
-      message: "User successfully authenticated",
-      data: {
-        response,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-export default { register, verifyEmail, login };
+export default { register, login, sendEmailVerificationToken, verifyEmail };
