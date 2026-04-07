@@ -1,11 +1,12 @@
 import express from "express";
 import validate from "../middlewares/validate.middleware";
-import { registerSchema, loginSchema } from "../validations/auth.schema";
-import authControllers from "../controllers/auth.controllers";
 import {
-  authLimiter,
-  passwordResetLimiter,
-} from "../middlewares/rateLimiter.middleware";
+  registerSchema,
+  loginSchema,
+  refreshToken,
+} from "../validations/auth.schema";
+import authControllers from "../controllers/auth.controllers";
+import { authLimiter } from "../middlewares/rateLimiter.middleware";
 
 const router = express.Router();
 
@@ -33,6 +34,13 @@ router.post(
   authLimiter,
   validate(loginSchema),
   authControllers.login,
+);
+
+router.post(
+  "/refresh",
+  validate(refreshToken),
+  authLimiter,
+  authControllers.refreshToken,
 );
 
 export default router;

@@ -2,9 +2,7 @@ import User from "../models/user.model";
 import config from "../config/config";
 import HttpError from "./http-error.utils";
 import logger from "./logger.utils";
-
-const MAX_FAILED_ATTEMPTS = config.maxFailedAttempts;
-const LOCK_DURATION_MS = config.lockDurationMs;
+import Token from "../models/token.model";
 
 class AccountLockUtils {
   handleFailedLogin = async (userId: string): Promise<void> => {
@@ -13,18 +11,18 @@ class AccountLockUtils {
 
     const newAttempts = user.failedLoginAttempts + 1;
 
-    if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+    if (newAttempts >= config.maxFailedAttempts) {
       await User.findByIdAndUpdate(userId, {
         failedLoginAttempts: newAttempts,
         isLocked: true,
-        lockUntil: new Date(Date.now() + LOCK_DURATION_MS),
+        lockUntil: new Date(Date.now() + config.lockDurationMs),
       });
 
       logger.warn({
         event: "ACCOUNT_LOCKED",
         userId,
         reason: "Too many failed login attempts",
-        lockUntil: new Date(Date.now() + LOCK_DURATION_MS),
+        lockUntil: new Date(Date.now() + config.lockDurationMs),
         timestamp: new Date().toISOString(),
       });
       throw new HttpError(423, "Too many failed login attempts");
@@ -60,6 +58,54 @@ class AccountLockUtils {
     }
 
     return { isLocked: user.isLocked, lockUntil: user.lockUntil ?? null };
+  };
+
+  lockAccount = async (userId: string, lockReason: string) => {
+    try {
+      const user = await User.findById(userId);
+      if (!user) return;
+
+      await User.findByIdAndUpdate(userId, {
+        isLocked: true,
+        lockUntil: new Date(Date.now() + config.lockDurationMs),
+      });
+
+      await Token.deleteMany({ userId });
+
+      logger.warn({
+        event: "ACCOUNT_LOCKED",
+        userId,
+        reason: lockReason,
+        lockUntil: new Date(Date.now() + config.lockDurationMs),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, String(err));
+    }
+  };
+
+  unlockAccount = async (userId: string) => {
+    try {
+      const user = await User.findById(userId);
+      if (!user) return;
+
+      await User.findByIdAndUpdate(userId, {
+        isLocked: false,
+        lockUntil: null,
+      });
+
+      await Token.deleteMany({ userId });
+
+      logger.info({
+        event: "ACCOUNT_UNLOCKED",
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, String(err));
+    }
   };
 }
 

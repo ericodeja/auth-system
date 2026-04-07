@@ -107,4 +107,30 @@ const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export default { register, login, sendEmailVerificationToken, verifyEmail };
+const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { oldRefreshToken }: { oldRefreshToken: string } = req.body;
+
+    const newTokens = await AuthService.refreshToken(oldRefreshToken);
+    res.status(201).json({
+      sucess: true,
+      data: {
+        newTokens,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export default {
+  register,
+  login,
+  sendEmailVerificationToken,
+  verifyEmail,
+  refreshToken,
+};

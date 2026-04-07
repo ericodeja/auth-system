@@ -42,4 +42,8 @@ const loginSchema = Joi.object({
   password: Joi.string().required().max(128),
 });
 
-export { registerSchema, loginSchema };
+const refreshToken = Joi.object({
+  oldRefreshToken: Joi.string().required(),
+});
+
+export { registerSchema, loginSchema, refreshToken };

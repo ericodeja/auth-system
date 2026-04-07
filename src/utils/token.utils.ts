@@ -3,8 +3,10 @@ import jwt from "jsonwebtoken";
 import config from "../config/config";
 import type { JwtPayload } from "jsonwebtoken";
 import Token from "../models/token.model";
+import User from "../models/user.model";
 import HttpError from "./http-error.utils";
 import logger from "./logger.utils";
+import AccountLockUtils from "./accountLock.utils";
 
 class TokenUtils {
   async generateEmailVerificationToken(
@@ -36,15 +38,30 @@ class TokenUtils {
     }
   }
 
-  verifyEmailToken(emailVerificationToken: string): JwtPayload {
+  async verifyJwtToken(
+    token: string,
+    secretKey: string,
+    tokenPurpose: string,
+  ): Promise<JwtPayload> {
     try {
-      return jwt.verify(
-        emailVerificationToken,
-        config.emailVerificationSecret,
-      ) as JwtPayload;
+      return jwt.verify(token, secretKey) as JwtPayload;
     } catch (err) {
-      logger.error(`verifyEmailToken failed: ${err}`);
-      throw new Error(`JwtError: ${String(err)}`);
+      if (err instanceof jwt.TokenExpiredError) {
+        const decoded = jwt.decode(token) as JwtPayload;
+        if (decoded) {
+          await Token.updateOne(
+            {
+              userId: decoded.userId,
+              purpose: `${tokenPurpose}`,
+              token,
+            },
+            { isValid: false },
+          );
+        }
+        throw new HttpError(401, "Session expired.");
+      }
+
+      throw new HttpError(401, "Invalid token.");
     }
   }
 
@@ -64,8 +81,16 @@ class TokenUtils {
 
   async generateRefreshToken(userId: Types.ObjectId | string): Promise<string> {
     try {
+      await Token.updateMany(
+        {
+          userId: userId,
+          purpose: "refreshToken",
+        },
+        { isValid: false },
+      );
+
       const refreshToken = jwt.sign(
-        { userId, purpose: "accessToken" },
+        { userId, purpose: "refreshToken" },
         config.refreshTokenSecret,
         { expiresIn: config.refreshTokenExpiry as any },
       );

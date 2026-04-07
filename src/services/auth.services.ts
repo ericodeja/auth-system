@@ -12,6 +12,7 @@ import type {
 import HttpError from "../utils/http-error.utils";
 import AccountLockUtils from "../utils/accountLock.utils";
 import logger from "../utils/logger.utils";
+import config from "../config/config";
 
 class AuthService {
   async createUser(
@@ -106,7 +107,7 @@ class AuthService {
       if (isLocked)
         throw new HttpError(
           423,
-          `Account is locked due to too many failed attempts. Try again at ${lockUntil?.toLocaleTimeString()}.`,
+          `Account is locked. Try again at ${lockUntil?.toLocaleTimeString()}.`,
         );
 
       const isMatch = await PasswordUtils.comparePassword(
@@ -184,7 +185,11 @@ class AuthService {
     try {
       let payload: JwtPayload;
       try {
-        payload = TokenUtils.verifyEmailToken(emailVerificationToken);
+        payload = await TokenUtils.verifyJwtToken(
+          emailVerificationToken,
+          config.emailVerificationSecret,
+          "email-verification",
+        );
       } catch {
         throw new HttpError(
           401,
@@ -231,6 +236,43 @@ class AuthService {
           isVerified: verifiedUser.isVerified,
         },
       };
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, String(err));
+    }
+  }
+
+  async refreshToken(
+    oldRefreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    try {
+      const payload = await TokenUtils.verifyJwtToken(
+        oldRefreshToken,
+        config.refreshTokenSecret,
+        "refreshToken",
+      );
+      const existingToken = await Token.findOne({
+        userId: payload.userId,
+        purpose: "refreshToken",
+        token: oldRefreshToken,
+      });
+
+      if (!existingToken || !existingToken.isValid) {
+        await Token.deleteMany({ userId: payload.userId });
+        await AccountLockUtils.lockAccount(payload.userId, "INVALID REFRESH TOKEN");
+        logger.error(
+          `Suspicious activity or token reuse detected for userId: ${payload.userId}. All sessions terminated.`,
+        );
+        throw new HttpError(403, "Invalid refresh token. Please login again.");
+      }
+
+      const accessToken = TokenUtils.generateAccessToken(payload.userId);
+      const refreshToken = await TokenUtils.generateRefreshToken(
+        payload.userId,
+      );
+
+      await existingToken.updateOne({ isValid: false });
+      return { accessToken, refreshToken };
     } catch (err) {
       if (err instanceof HttpError) throw err;
       throw new HttpError(500, String(err));
