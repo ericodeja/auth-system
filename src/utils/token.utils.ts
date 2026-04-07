@@ -3,74 +3,88 @@ import jwt from "jsonwebtoken";
 import config from "../config/config";
 import type { JwtPayload } from "jsonwebtoken";
 import Token from "../models/token.model";
-
-const EMAIL_VERIFICATION_SECRET = config.emailVerificationSecret;
-const ACCESS_TOKEN_SECRET = config.accessToken;
-const REFRESH_TOKEN_SECRET = config.refreshToken;
+import HttpError from "./http-error.utils";
+import logger from "./logger.utils";
 
 class TokenUtils {
   async generateEmailVerificationToken(
     userId: Types.ObjectId | string,
     email: string,
   ): Promise<string> {
-    const emailVerificationToken = jwt.sign(
-      { userId, email, purpose: "email-verification" },
-      EMAIL_VERIFICATION_SECRET,
-      { expiresIn: "30m" },
-    );
+    try {
+      const emailVerificationToken = jwt.sign(
+        { userId, email, purpose: "email-verification" },
+        config.emailVerificationSecret,
+        { expiresIn: config.emailVerificationExpiry as any },
+      );
 
-    const decoded = jwt.decode(emailVerificationToken) as JwtPayload;
+      const decoded = jwt.decode(emailVerificationToken) as JwtPayload;
 
-    const newToken = new Token({
-      userId,
-      token: emailVerificationToken,
-      purpose: "email-verification",
-      iat: decoded.iat,
-      exp: decoded.exp,
-    });
-    await newToken.save();
+      const newToken = new Token({
+        userId,
+        token: emailVerificationToken,
+        purpose: "email-verification",
+        iat: decoded.iat,
+        exp: decoded.exp,
+      });
+      await newToken.save();
 
-    return emailVerificationToken;
+      return emailVerificationToken;
+    } catch (err) {
+      logger.error(`Generate emailVerificationToken failed: ${err}`);
+      throw new HttpError(500, String(err));
+    }
   }
 
-  verifyEmail(emailVerificationToken: string): JwtPayload {
+  verifyEmailToken(emailVerificationToken: string): JwtPayload {
     try {
       return jwt.verify(
         emailVerificationToken,
-        EMAIL_VERIFICATION_SECRET,
+        config.emailVerificationSecret,
       ) as JwtPayload;
     } catch (err) {
+      logger.error(`verifyEmailToken failed: ${err}`);
       throw new Error(`JwtError: ${String(err)}`);
     }
   }
 
   generateAccessToken(userId: Types.ObjectId | string): string {
-    const accessToken = jwt.sign(
-      { userId, purpose: "accessToken" },
-      ACCESS_TOKEN_SECRET,
-      { expiresIn: "15m" },
-    );
-
-    return accessToken;
+    try {
+      const accessToken = jwt.sign(
+        { userId, purpose: "accessToken" },
+        config.accessTokenSecret,
+        { expiresIn: config.accessTokenExpiry as any },
+      );
+      return accessToken;
+    } catch (err) {
+      logger.error(`generateAccessToken failed: ${err}`);
+      throw new HttpError(500, String(err));
+    }
   }
+
   async generateRefreshToken(userId: Types.ObjectId | string): Promise<string> {
-    const refreshToken = jwt.sign(
-      { userId, purpose: "accessToken" },
-      REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
-    );
-    const decoded = jwt.decode(refreshToken) as JwtPayload;
+    try {
+      const refreshToken = jwt.sign(
+        { userId, purpose: "accessToken" },
+        config.refreshTokenSecret,
+        { expiresIn: config.refreshTokenExpiry as any },
+      );
+      const decoded = jwt.decode(refreshToken) as JwtPayload;
 
-    const newToken = new Token({
-      userId,
-      token: refreshToken,
-      purpose: "refreshToken",
-      iat: decoded.iat,
-      exp: decoded.exp,
-    });
-    await newToken.save();
+      const newToken = new Token({
+        userId,
+        token: refreshToken,
+        purpose: "refreshToken",
+        iat: decoded.iat,
+        exp: decoded.exp,
+      });
+      await newToken.save();
 
-    return refreshToken;
+      return refreshToken;
+    } catch (err) {
+      logger.error(`generateRefreshToken failed: ${err}`);
+      throw new HttpError(500, String(err));
+    }
   }
 }
 

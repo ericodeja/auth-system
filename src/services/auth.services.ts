@@ -3,7 +3,7 @@ import User from "../models/user.model";
 import Token from "../models/token.model";
 import TokenUtils from "../utils/token.utils";
 import type { JwtPayload } from "jsonwebtoken";
-import { sendEmailVerificationMail } from "../utils/email.utils";
+import SendEmail from "../utils/email.utils";
 import type {
   CreateUserResponse,
   EmailVerificationResponse,
@@ -53,9 +53,11 @@ class AuthService {
         await TokenUtils.generateEmailVerificationToken(userId, email);
 
       // Send email in the background so it doesn't block the response (fire-and-forget)
-      sendEmailVerificationMail(email, emailVerificationToken).catch((err) => {
-        logger.error("Background email dispatch failed:", err);
-      });
+      SendEmail.sendEmailVerificationMail(email, emailVerificationToken).catch(
+        (err) => {
+          logger.error("Background email dispatch failed:", err);
+        },
+      );
 
       //Background tasks saves result and frontend polls once after signup
       PasswordUtils.isPasswordBreached(password)
@@ -164,7 +166,10 @@ class AuthService {
       const emailVerificationToken: string =
         await TokenUtils.generateEmailVerificationToken(id, user.email);
 
-      sendEmailVerificationMail(user.email, emailVerificationToken).catch((err) => {
+      SendEmail.sendEmailVerificationMail(
+        user.email,
+        emailVerificationToken,
+      ).catch((err) => {
         logger.error("Background email dispatch failed:", err);
       });
     } catch (err) {
@@ -179,7 +184,7 @@ class AuthService {
     try {
       let payload: JwtPayload;
       try {
-        payload = TokenUtils.verifyEmail(emailVerificationToken);
+        payload = TokenUtils.verifyEmailToken(emailVerificationToken);
       } catch {
         throw new HttpError(
           401,

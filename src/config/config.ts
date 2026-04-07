@@ -17,6 +17,7 @@ if (!process.env.REFRESH_TOKEN_SECRET)
 
 const config: Config = {
   port: Number(process.env.PORT) || 3000,
+  baseUrl: `http://localhost/${process.env.PORT}`,
   nodeEnv: process.env.NODE_ENV || "development",
   mongoUri: process.env.MONGODB_URI,
   saltRounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 12,
@@ -32,8 +33,10 @@ const config: Config = {
   generalRateLimitMax: Number(process.env.GENERAL_RATE_LIMIT_MAX) || 100,
   maxFailedAttempts: Number(process.env.MAX_FAILED_ATTEMPTS) || 5,
   lockDurationMs: Number(process.env.LOCK_DURATION_MS) || 1800000,
-  accessToken: process.env.ACCESS_TOKEN_SECRET || "",
-  refreshToken: process.env.REFRESH_TOKEN_SECRET || "",
+  accessTokenSecret: process.env.ACCESS_TOKEN_SECRET || "",
+  refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET || "",
+  accessTokenExpiry: process.env.EMAIL_VERIFICATION_EXPIRY || "15m",
+  refreshTokenExpiry: process.env.EMAIL_VERIFICATION_EXPIRY || "7d",
 };
 
 export default config;

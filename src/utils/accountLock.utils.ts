@@ -24,7 +24,7 @@ class AccountLockUtils {
         event: "ACCOUNT_LOCKED",
         userId,
         reason: "Too many failed login attempts",
-        lockedUntil: new Date(Date.now() + LOCK_DURATION_MS),
+        lockUntil: new Date(Date.now() + LOCK_DURATION_MS),
         timestamp: new Date().toISOString(),
       });
       throw new HttpError(423, "Too many failed login attempts");

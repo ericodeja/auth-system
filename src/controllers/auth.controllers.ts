@@ -36,7 +36,7 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     res.status(200).json({
       success: true,
       message: "User successfully created",
-      emailResponse: createEmailResponse,
+      createEmailResponse,
       data: {
         unverifiedUser,
       },

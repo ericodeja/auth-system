@@ -4,13 +4,13 @@ import { connectDB } from "./db/mongodb";
 import mongoose from "mongoose";
 import type { Application } from "express";
 import logger from "./utils/logger.utils";
-const port = config.port;
+const PORT = config.port;
 
-async function startServer(app: Application, port: number) {
+async function startServer(app: Application, PORT: number) {
   try {
     await connectDB();
-    const server = app.listen(port, "127.0.0.1", () => {
-      logger.info(`Server running at http://localhost:${port}`);
+    const server = app.listen(PORT, "127.0.0.1", () => {
+      logger.info(`Server running at ${config.baseUrl}`);
     });
 
     process.on("SIGTERM", async () => {
@@ -34,4 +34,4 @@ async function startServer(app: Application, port: number) {
   }
 }
 
-startServer(app, port);
+startServer(app, PORT);

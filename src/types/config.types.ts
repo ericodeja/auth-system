@@ -1,5 +1,6 @@
 export type Config = {
   port: number;
+  baseUrl: string;
   nodeEnv: string;
   mongoUri: string;
   saltRounds: number;
@@ -14,6 +15,9 @@ export type Config = {
   generalRateLimitMax: number;
   maxFailedAttempts: number;
   lockDurationMs: number;
-  accessToken: string;
-  refreshToken: string;
+  accessTokenSecret: string;
+  refreshTokenSecret: string;
+  accessTokenExpiry: string;
+  refreshTokenExpiry: string;
+
 };
