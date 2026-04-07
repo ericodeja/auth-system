@@ -8,8 +8,6 @@ import type {
   LoginResponse,
 } from "../types";
 import HttpError from "../utils/http-error.utils";
-import { send } from "node:process";
-import { verify } from "node:crypto";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
