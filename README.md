@@ -7,6 +7,7 @@ A comprehensive authentication and authorization system built with Express.js an
 - **User Registration** — User signup with validation and email verification
 - **Email Verification** — Verify email ownership with token-based confirmation
 - **JWT Authentication** — Secure token-based authentication with access/refresh tokens
+- **Multi-Factor Authentication (MFA)** — Enhanced security with TOTP (Google Authenticator, etc.)
 - **Password Management** — Secure password hashing with bcrypt and recovery functionality
 - **Rate Limiting** — API rate limiting to prevent brute force attacks
 - **Account Locking** — Automatic account lock after failed login attempts
@@ -20,7 +21,8 @@ A comprehensive authentication and authorization system built with Express.js an
 - **Runtime** — Node.js with TypeScript
 - **Framework** — Express.js
 - **Database** — MongoDB with Mongoose ODM
-- **Authentication** — JWT (jsonwebtoken), bcrypt
+- **Authentication** — JWT (jsonwebtoken), bcrypt, speakeasy (TOTP)
+- **MFA QR Codes** — qrcode
 - **Validation** — Joi
 - **Email** — Resend
 - **Rate Limiting** — express-rate-limit
@@ -36,10 +38,13 @@ src/
 ├── config/                         # Configuration files
 │   └── config.ts                   # Environment and app config
 ├── controllers/                    # Request handlers
-│   └── auth.controllers.ts         # Authentication endpoints
+│   ├── auth.controllers.ts         # Authentication endpoints
+│   ├── mfa.controllers.ts          # MFA endpoints
+│   └── token.controllers.ts        # Token management endpoints
 ├── db/                            # Database setup
 │   └── mongodb.ts                 # MongoDB connection
 ├── middlewares/                    # Custom middleware
+│   ├── authenticate.middleware.ts # Authentication check
 │   ├── errorHandler.middleware.ts # Global error handler
 │   ├── rateLimiter.middleware.ts  # Rate limiting
 │   └── validate.middleware.ts     # Schema validation
@@ -47,9 +52,11 @@ src/
 │   ├── user.model.ts              # User schema
 │   └── token.model.ts             # Token schema
 ├── routes/                         # API routes
-│   └── auth.routes.ts             # Authentication routes
+│   └── auth.routes.ts             # Combined authentication routes
 ├── services/                       # Business logic
-│   └── auth.services.ts           # Auth service layer
+│   ├── auth.services.ts           # Auth service layer
+│   ├── mfa.services.ts            # MFA service layer
+│   └── token.services.ts          # Token service layer
 ├── types/                          # TypeScript type definitions
 │   ├── auth.types.ts              # Auth types
 │   ├── config.types.ts            # Config types
@@ -59,8 +66,10 @@ src/
 │   ├── email.utils.ts             # Email sending
 │   ├── http-error.utils.ts        # HTTP error handling
 │   ├── logger.utils.ts            # Logger setup
+│   ├── mfa.utils.ts               # MFA helpers
 │   ├── password.utils.ts          # Password hashing/comparison
-│   └── token.utils.ts             # JWT token operations
+│   ├── token.utils.ts             # JWT token operations
+│   └── user.utils.ts              # User retrieval helpers
 └── validations/                    # Joi schemas
     └── auth.schema.ts             # Auth validation schemas
 ```
@@ -269,7 +278,7 @@ Refresh access token using refresh token.
 
 ```json
 {
-  "sucess": true,
+  "success": true,
   "data": {
     "newTokens": {
       "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NWE0YjhjOWQxZTJmM2c0aDVpNmo3azgiLCJpYXQiOjE3MDUwMDAxMDB9.new1234efgh5678ijkl9012mnop3456abcd",
@@ -279,7 +288,81 @@ Refresh access token using refresh token.
 }
 ```
 
-**Note:** Response has typo in code (`sucess` instead of `success`)
+---
+
+#### `GET /auth/getOtpAuthUrl`
+
+Generate a TOTP secret and return a provisioning URL (suitable for QR code generation). Requires authentication.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "otpAuthUrl": "otpauth://totp/AuthSystem:john.doe@example.com?secret=JBSWY3DPEHPK3PXP&issuer=AuthSystem"
+  }
+}
+```
+
+---
+
+#### `POST /auth/enable-mfa`
+
+Enable MFA for the authenticated user by verifying a token from their authenticator app.
+
+**Request Body:**
+
+```json
+{
+  "token": "123456"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "MFA successfully enabled"
+}
+```
+
+---
+
+#### `POST /auth/verify-mfa`
+
+Verify an MFA token during secondary authentication (after login).
+
+**Request Body:**
+
+```json
+{
+  "token": "123456"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "User successfully authenticated",
+  "data": {
+    "response": {
+      "user": {
+        "_id": "65a4b8c9d1e2f3g4h5i6j7k8",
+        "email": "john.doe@example.com",
+        "role": "user"
+      },
+      "tokens": {
+        "accessToken": "...",
+        "refreshToken": "..."
+      }
+    }
+  }
+}
+```
 
 **Error Responses:**
 

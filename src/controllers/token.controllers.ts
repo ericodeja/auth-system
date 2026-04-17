@@ -58,7 +58,7 @@ const refreshToken = async (
 
     const newTokens = await TokenService.refreshToken(oldRefreshToken);
     res.status(201).json({
-      sucess: true,
+      success: true,
       data: {
         newTokens,
       },
