@@ -1,21 +1,19 @@
 import PasswordUtils from "../utils/password.utils";
 import User from "../models/user.model";
-import Token from "../models/token.model";
 import TokenUtils from "../utils/token.utils";
-import type { JwtPayload } from "jsonwebtoken";
 import SendEmail from "../utils/email.utils";
 import type {
   CreateUserResponse,
-  EmailVerificationResponse,
   LoginResponse,
+  mfaRequiredResponse,
 } from "../types";
 import HttpError from "../utils/http-error.utils";
 import AccountLockUtils from "../utils/accountLock.utils";
 import logger from "../utils/logger.utils";
-import config from "../config/config";
+import UserUtils from "../utils/user.utils";
 
-class AuthService {
-  async createUser(
+export default class AuthService {
+  static async createUser(
     firstName: string,
     lastName: string,
     email: string,
@@ -30,13 +28,13 @@ class AuthService {
         email,
       });
       if (existingUser) {
-        throw new HttpError(400, "A user with this email already exists");
+        throw new HttpError(400, "A user with this email already exists"); //This error message gives away info
       }
 
       const hashedPassword = await PasswordUtils.hashPassword(password);
 
       //Save unverified user
-      const unverifiedUser = new User({
+      const unverifiedUser = await User.create({
         firstName,
         lastName,
         email,
@@ -46,12 +44,9 @@ class AuthService {
         agreedToTerms,
       });
 
-      await unverifiedUser.save();
-
       //Generate Email Verification Token
-      const userId: string = unverifiedUser._id.toString();
       const emailVerificationToken: string =
-        await TokenUtils.generateEmailVerificationToken(userId, email);
+        await TokenUtils.generateEmailVerificationToken(unverifiedUser._id);
 
       // Send email in the background so it doesn't block the response (fire-and-forget)
       SendEmail.sendEmailVerificationMail(email, emailVerificationToken).catch(
@@ -73,7 +68,7 @@ class AuthService {
 
       return {
         unverifiedUser: {
-          _id: unverifiedUser._id,
+          id: unverifiedUser._id,
           email: unverifiedUser.email,
           firstName: unverifiedUser.firstName,
           lastName: unverifiedUser.lastName,
@@ -87,21 +82,26 @@ class AuthService {
     }
   }
 
-  async loginUser(
+  static async loginUser(
     email: string,
     password: string,
     ip?: string,
     userAgent?: string,
-  ): Promise<LoginResponse> {
+  ): Promise<LoginResponse | mfaRequiredResponse> {
     try {
-      const user = await User.findOne({ email })
-        .select("email role password isLocked lockUntil failedLoginAttempts ")
-        .lean();
+      const user = await UserUtils.getUser(email, [
+        "email",
+        "role",
+        "password",
+        "mfaEnabled",
+        "isLocked",
+        "lockUntil",
+        "failedLoginAttempts",
+      ]);
 
-      if (!user) throw new HttpError(401, "Invalid email or password.");
 
       const { isLocked, lockUntil } = await AccountLockUtils.isAccountLocked(
-        user._id.toString(),
+        user._id,
       );
 
       if (isLocked)
@@ -116,15 +116,30 @@ class AuthService {
       );
 
       if (!isMatch) {
-        await AccountLockUtils.handleFailedLogin(user._id.toString());
+        await AccountLockUtils.handleFailedAttempt(user._id);
         throw new HttpError(401, "Invalid email or password");
       }
 
-      await AccountLockUtils.resetFailedLogins(user._id.toString());
+      await AccountLockUtils.resetFailedLogins(user._id);
 
-      /* 
-       Add MFA
-      */
+      const isMfaEnabled = user.mfaEnabled;
+
+      if (isMfaEnabled) {
+        const preAuthToken: string = TokenUtils.generateAccessToken(user._id);
+        logger.info({
+          event: "MFA_VERIFICATION",
+          userId: user._id,
+          email: user.email,
+          ip,
+          userAgent,
+          timestamp: new Date().toISOString(),
+        });
+
+        return {
+          mfaRequired: user.mfaEnabled,
+          data: { id: user._id, preAuthToken: preAuthToken },
+        };
+      }
 
       const accessToken: string = TokenUtils.generateAccessToken(user._id);
       const refreshToken: string = await TokenUtils.generateRefreshToken(
@@ -142,7 +157,7 @@ class AuthService {
 
       return {
         user: {
-          _id: user._id,
+          id: user._id,
           email: user.email,
           role: user.role,
         },
@@ -156,128 +171,4 @@ class AuthService {
       throw new HttpError(500, String(err));
     }
   }
-
-  async sendEmailVerificationToken(id: string) {
-    try {
-      const user = await User.findById(id).select("email").lean();
-      if (!user) {
-        throw new HttpError(404, "User does not exist ");
-      }
-
-      const emailVerificationToken: string =
-        await TokenUtils.generateEmailVerificationToken(id, user.email);
-
-      SendEmail.sendEmailVerificationMail(
-        user.email,
-        emailVerificationToken,
-      ).catch((err) => {
-        logger.error("Background email dispatch failed:", err);
-      });
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(500, String(err));
-    }
-  }
-
-  async verifyEmail(
-    emailVerificationToken: string,
-  ): Promise<EmailVerificationResponse> {
-    try {
-      let payload: JwtPayload;
-      try {
-        payload = await TokenUtils.verifyJwtToken(
-          emailVerificationToken,
-          config.emailVerificationSecret,
-          "email-verification",
-        );
-      } catch {
-        throw new HttpError(
-          401,
-          "Verification token is invalid or has expired",
-        );
-      }
-
-      const existingToken = await Token.findOne({
-        userId: payload.userId,
-        purpose: "email-verification",
-      }).lean();
-
-      if (!existingToken || !existingToken.isValid) {
-        throw new HttpError(
-          404,
-          "EmailVerificationToken does not exist or has already been used",
-        );
-      }
-      const [verifiedUser] = await Promise.all([
-        User.findByIdAndUpdate(
-          payload.userId,
-          { isVerified: true },
-          {
-            returnDocument: "after",
-            select: "_id email role isVerified",
-            lean: true,
-          },
-        ),
-        Token.updateMany(
-          { userId: payload.userId, purpose: "email-verification" },
-          { isValid: false },
-        ),
-      ]);
-
-      if (!verifiedUser) {
-        throw new HttpError(404, "User not found");
-      }
-
-      return {
-        verifiedUser: {
-          _id: verifiedUser._id,
-          email: verifiedUser.email,
-          role: verifiedUser.role,
-          isVerified: verifiedUser.isVerified,
-        },
-      };
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(500, String(err));
-    }
-  }
-
-  async refreshToken(
-    oldRefreshToken: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    try {
-      const payload = await TokenUtils.verifyJwtToken(
-        oldRefreshToken,
-        config.refreshTokenSecret,
-        "refreshToken",
-      );
-      const existingToken = await Token.findOne({
-        userId: payload.userId,
-        purpose: "refreshToken",
-        token: oldRefreshToken,
-      });
-
-      if (!existingToken || !existingToken.isValid) {
-        await Token.deleteMany({ userId: payload.userId });
-        await AccountLockUtils.lockAccount(payload.userId, "INVALID REFRESH TOKEN");
-        logger.error(
-          `Suspicious activity or token reuse detected for userId: ${payload.userId}. All sessions terminated.`,
-        );
-        throw new HttpError(403, "Invalid refresh token. Please login again.");
-      }
-
-      const accessToken = TokenUtils.generateAccessToken(payload.userId);
-      const refreshToken = await TokenUtils.generateRefreshToken(
-        payload.userId,
-      );
-
-      await existingToken.updateOne({ isValid: false });
-      return { accessToken, refreshToken };
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(500, String(err));
-    }
-  }
 }
-
-export default new AuthService();

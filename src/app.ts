@@ -10,6 +10,7 @@ app.use(generalLimiter);
 app.use(express.json());
 app.use(urlencoded({ extended: false }));
 
+
 app.use("/auth/", authRouters);
 
 app.get("/", (req: Request, res: Response) => {

@@ -6,7 +6,10 @@ import {
   refreshToken,
 } from "../validations/auth.schema";
 import authControllers from "../controllers/auth.controllers";
+import mfaControllers from "../controllers/mfa.controllers";
+import tokenControllers from "../controllers/token.controllers";
 import { authLimiter } from "../middlewares/rateLimiter.middleware";
+import authenticate from "../middlewares/authenticate.middleware";
 
 const router = express.Router();
 
@@ -20,13 +23,13 @@ router.post(
 router.post(
   "/resend-email-verification-token/:id",
   authLimiter,
-  authControllers.sendEmailVerificationToken,
+  tokenControllers.sendEmailVerificationToken,
 );
 
 router.post(
   "/verify-email/:emailVerificationToken",
   authLimiter,
-  authControllers.verifyEmail,
+  tokenControllers.verifyEmailToken,
 );
 
 router.post(
@@ -38,9 +41,21 @@ router.post(
 
 router.post(
   "/refresh",
-  validate(refreshToken),
   authLimiter,
-  authControllers.refreshToken,
+  authenticate,
+  validate(refreshToken),
+  tokenControllers.refreshToken,
 );
+
+router.get(
+  "/getOtpAuthUrl",
+  authLimiter,
+  authenticate,
+  mfaControllers.getOtpAuthUrl,
+);
+
+router.post("/enable-mfa", authLimiter, authenticate, mfaControllers.enableMfa);
+
+router.post("/verify-mfa", authLimiter, authenticate, mfaControllers.verifyMfa);
 
 export default router;

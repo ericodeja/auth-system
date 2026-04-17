@@ -3,9 +3,12 @@ import config from "../config/config";
 import HttpError from "./http-error.utils";
 import logger from "./logger.utils";
 import Token from "../models/token.model";
+import { Types } from "mongoose";
 
 class AccountLockUtils {
-  handleFailedLogin = async (userId: string): Promise<void> => {
+  static handleFailedAttempt = async (
+    userId: Types.ObjectId | string,
+  ): Promise<void> => {
     const user = await User.findById(userId);
     if (!user) return;
 
@@ -33,7 +36,9 @@ class AccountLockUtils {
     }
   };
 
-  resetFailedLogins = async (userId: string): Promise<void> => {
+  static resetFailedLogins = async (
+    userId: Types.ObjectId | string,
+  ): Promise<void> => {
     await User.findByIdAndUpdate(userId, {
       failedLoginAttempts: 0,
       isLocked: false,
@@ -41,8 +46,8 @@ class AccountLockUtils {
     });
   };
 
-  isAccountLocked = async (
-    userId: string,
+  static isAccountLocked = async (
+    userId: Types.ObjectId | string,
   ): Promise<{ isLocked: boolean; lockUntil: Date | null }> => {
     const user = await User.findById(userId).select("isLocked lockUntil");
     if (!user) return { isLocked: false, lockUntil: null };
@@ -60,7 +65,7 @@ class AccountLockUtils {
     return { isLocked: user.isLocked, lockUntil: user.lockUntil ?? null };
   };
 
-  lockAccount = async (userId: string, lockReason: string) => {
+  static lockAccount = async (userId: Types.ObjectId | string, lockReason: string) => {
     try {
       const user = await User.findById(userId);
       if (!user) return;
@@ -85,7 +90,7 @@ class AccountLockUtils {
     }
   };
 
-  unlockAccount = async (userId: string) => {
+  static unlockAccount = async (userId: Types.ObjectId | string) => {
     try {
       const user = await User.findById(userId);
       if (!user) return;
@@ -109,4 +114,4 @@ class AccountLockUtils {
   };
 }
 
-export default new AccountLockUtils();
+export default AccountLockUtils

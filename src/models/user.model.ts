@@ -26,6 +26,13 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  mfaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  mfaSecret: {
+    type: String,
+  },
   lockUntil: {
     type: Date,
     default: null,

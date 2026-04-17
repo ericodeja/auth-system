@@ -17,7 +17,7 @@ export type LoginPayload = {
 
 export type CreateUserResponse = {
   unverifiedUser: {
-    _id: Types.ObjectId | string;
+    id: Types.ObjectId | string;
     email: string;
     firstName: string;
     lastName: string;
@@ -28,7 +28,7 @@ export type CreateUserResponse = {
 
 export type EmailVerificationResponse = {
   verifiedUser: {
-    _id: Types.ObjectId | string;
+    id: Types.ObjectId | string;
     email: string;
     role: string;
     isVerified: Boolean;
@@ -37,12 +37,20 @@ export type EmailVerificationResponse = {
 
 export type LoginResponse = {
   user: {
-    _id: Types.ObjectId | string;
+    id: Types.ObjectId | string;
     email: string;
     role: string;
   };
   tokens: {
     accessToken: string;
     refreshToken: string;
+  };
+};
+
+export type mfaRequiredResponse = {
+  mfaRequired: boolean;
+  data: {
+    id: Types.ObjectId | string;
+    preAuthToken: string;
   };
 };

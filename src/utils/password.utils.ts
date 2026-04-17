@@ -12,7 +12,7 @@ export type PasswordBreachResult = {
 const SALT_ROUNDS = config.saltRounds;
 
 class PasswordUtils {
-  async isPasswordBreached(
+  static async isPasswordBreached(
     plainTextPassword: string,
   ): Promise<PasswordBreachResult> {
     try {
@@ -54,13 +54,16 @@ class PasswordUtils {
     }
   }
 
-  async hashPassword(plainTextPassword: string) {
+  static async hashPassword(plainTextPassword: string) {
     return await bcrypt.hash(plainTextPassword, SALT_ROUNDS);
   }
 
-  async comparePassword(plainTextPassword: string, hashedPassword: string) {
+  static async comparePassword(
+    plainTextPassword: string,
+    hashedPassword: string,
+  ) {
     return await bcrypt.compare(plainTextPassword, hashedPassword);
   }
 }
 
-export default new PasswordUtils();
+export default PasswordUtils;
