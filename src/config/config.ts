@@ -14,6 +14,9 @@ if (!process.env.ACCESS_TOKEN_SECRET)
   throw new Error("Missing env var: ACCESS_TOKEN_SECRET");
 if (!process.env.REFRESH_TOKEN_SECRET)
   throw new Error("Missing env var: REFRESH_TOKEN_SECRET");
+if (!process.env.MFA_ENCRYPTION_SECRET)
+  throw new Error("Missing env var: MFA_ENCRYPTION_SECRET");
+if (!process.env.IV_BYTES) throw new Error("Missing env var: IV_BYTES");
 
 const config: Config = {
   port: Number(process.env.PORT) || 3000,
@@ -37,6 +40,8 @@ const config: Config = {
   refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET || "",
   accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY || "15m",
   refreshTokenExpiry: process.env.REFRESH_TOKEN_EXPIRY || "7d",
+  mfaEncryptionSecret: process.env.MFA_ENCRYPTION_SECRET,
+  ivBytes: Number(process.env.IV_BYTES),
 };
 
 export default config;

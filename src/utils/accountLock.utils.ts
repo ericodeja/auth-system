@@ -24,11 +24,11 @@ class AccountLockUtils {
       logger.warn({
         event: "ACCOUNT_LOCKED",
         userId,
-        reason: "Too many failed login attempts",
+        reason: "Too many failed attempts",
         lockUntil: new Date(Date.now() + config.lockDurationMs),
         timestamp: new Date().toISOString(),
       });
-      throw new HttpError(423, "Too many failed login attempts");
+      throw new HttpError(423, "Too many failed attempts");
     } else {
       await User.findByIdAndUpdate(userId, {
         failedLoginAttempts: newAttempts,
@@ -65,7 +65,10 @@ class AccountLockUtils {
     return { isLocked: user.isLocked, lockUntil: user.lockUntil ?? null };
   };
 
-  static lockAccount = async (userId: Types.ObjectId | string, lockReason: string) => {
+  static lockAccount = async (
+    userId: Types.ObjectId | string,
+    lockReason: string,
+  ) => {
     try {
       const user = await User.findById(userId);
       if (!user) return;
@@ -114,4 +117,4 @@ class AccountLockUtils {
   };
 }
 
-export default AccountLockUtils
+export default AccountLockUtils;

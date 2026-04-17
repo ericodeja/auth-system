@@ -23,8 +23,9 @@ export default class MultiFactorAuth {
 
       const tempSecret = MFAUtils.generateSecret(user.email);
       const otpAuthUrl = await MFAUtils.getOtpAuthUrl(tempSecret);
+      const encryptedSecret = MFAUtils.encrypt(tempSecret.base32);
 
-      await User.updateOne({ _id: id }, { mfaSecret: tempSecret.base32 });
+      await User.updateOne({ _id: id }, { mfaSecret: encryptedSecret });
 
       return otpAuthUrl;
     } catch (err) {
@@ -45,7 +46,9 @@ export default class MultiFactorAuth {
       throw new HttpError(401, "MFA not enabled");
     }
 
-    const isTokenValid = MFAUtils.verifyToken(user.mfaSecret, token);
+    const decryptedSecret = MFAUtils.decrypt(user.mfaSecret);
+
+    const isTokenValid = MFAUtils.verifyToken(decryptedSecret, token);
 
     if (!isTokenValid) {
       await AccountLockUtils.handleFailedAttempt(id);
@@ -60,7 +63,7 @@ export default class MultiFactorAuth {
       await MultiFactorAuth.verifyMfaToken(id, token);
       await User.updateOne({ _id: id }, { mfaEnabled: true });
     } catch (err) {
-      await User.updateOne({ _id: id }, { mfaSecret: "" });
+      await AccountLockUtils.handleFailedAttempt(id);
       if (err instanceof HttpError) throw err;
       throw new HttpError(500, String(err));
     }

@@ -19,5 +19,7 @@ export type Config = {
   refreshTokenSecret: string;
   accessTokenExpiry: string;
   refreshTokenExpiry: string;
+  mfaEncryptionSecret: string;
+  ivBytes: number
 
 };
